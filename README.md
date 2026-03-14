@@ -23,18 +23,6 @@ Lightweight Visual Language Model (VLM) Inference Tool optimized for **Jetson Ed
 - Jetson Nano/Xavier NX/Orin (JetPack 5.0+)
 - Minimum 8GB RAM 
 
-2. Install VisionInfer
-2.1 For Jetson (Pre-installed System OpenCV)
-To avoid breaking system dependencies (e.g., JetPack's pre-built OpenCV), use --system-site-packages to reuse the system's OpenCV:
-bash
-运行
-pipx install --system-site-packages vinfer
-2.2 For Other Systems (No Special OpenCV)
-Install with full dependencies (includes OpenCV) if your system doesn't have a pre-configured OpenCV:
-bash
-运行
-pipx install vinfer[full]
-3. Alternative: Manual Installation (For Development)
 ## Installation
 ### 1. Base Dependencies (All Platforms)
 ```bash
