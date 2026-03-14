@@ -81,37 +81,37 @@ ollama pull qwen3.5:2b
 ### 1. USB Camera Inference
 ```bash
 # Basic USB camera (device ID 0) with debug logs
-python visioninfer.py cam --usb-dev 0 --debug
+vinfer cam --usb-dev 0 --debug
 
 # USB camera with motion detection (infer only on motion)
-python visioninfer.py cam --usb-dev 0 --motion-gate --motion-threshold 500
+vinfer cam --usb-dev 0 --motion-gate --motion-threshold 500
 
 # USB camera with frame deduplication (skip similar frames)
-python visioninfer.py cam --usb-dev 0 --dedup --interval 2.0
+vinfer cam --usb-dev 0 --dedup --interval 2.0
 ```
 
 ### 2. RTSP Camera Inference
 ```bash
 # Basic RTSP stream (default credentials)
-python visioninfer.py cam --rtsp-host 192.168.1.10 --rtsp-user admin --rtsp-pass password --debug
+vinfer cam --rtsp-host 192.168.1.10 --rtsp-user admin --rtsp-pass password --debug
 
 # RTSP with custom compression (320x240) and JPG quality (80)
-python visioninfer.py cam --rtsp-host 192.168.1.10 --compress-size 320x240 --jpg-quality 80
+vinfer --rtsp-host 192.168.1.10 --compress-size 320x240 --jpg-quality 80
 ```
 
 ### 3. VOD (Video File) Analysis
 ```bash
 # Local video file (analyze every 30 frames)
-python visioninfer.py analyze --type vod --file /path/to/video.mp4 --start 0 --step 30
+vinfer analyze --type vod --file /path/to/video.mp4 --start 0 --step 30
 
 # Network VOD URL (e.g., MP4 stream)
-python visioninfer.py analyze --type vod --url https://example.com/video.mp4 --debug
+vinfer analyze --type vod --url https://example.com/video.mp4 --debug
 ```
 
 ### 4. Live Stream Analysis
 ```bash
 # HLS live stream (e.g., .m3u8)
-python visioninfer.py analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
+vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 ```
 
 ## Command Reference
