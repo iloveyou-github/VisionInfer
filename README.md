@@ -21,59 +21,46 @@ Lightweight Visual Language Model (VLM) Inference Tool optimized for **Jetson Ed
 
 ### Jetson-Specific Requirements
 - Jetson Nano/Xavier NX/Orin (JetPack 5.0+)
-- Minimum 4GB RAM (8GB+ recommended)
-- Sufficient swap space (4GB+ for 2B models)
+- Minimum 8GB RAM 
 
+2. Install VisionInfer
+2.1 For Jetson (Pre-installed System OpenCV)
+To avoid breaking system dependencies (e.g., JetPack's pre-built OpenCV), use --system-site-packages to reuse the system's OpenCV:
+bash
+运行
+pipx install --system-site-packages vinfer
+2.2 For Other Systems (No Special OpenCV)
+Install with full dependencies (includes OpenCV) if your system doesn't have a pre-configured OpenCV:
+bash
+运行
+pipx install vinfer[full]
+3. Alternative: Manual Installation (For Development)
 ## Installation
 ### 1. Base Dependencies (All Platforms)
 ```bash
 # Install system dependencies
-sudo apt update && sudo apt install -y ffmpeg python3-pip python3-opencv
-
-# Install Python packages
-pip3 install numpy psutil opencv-python
+sudo apt update && sudo apt install -y ffmpeg python3-pip pipx
+```
+### 2. Install VisionInfer
+#### 2.1 For Jetson (Pre-installed System OpenCV)
+To avoid breaking system dependencies (e.g., JetPack's pre-built OpenCV), use --system-site-packages to reuse the system's OpenCV:
+```bash
+pipx install --system-site-packages vinfer
+```
+#### 2.2 For Other Systems (No Special OpenCV)
+Install with full dependencies (includes OpenCV) if your system doesn't have a pre-configured OpenCV:
+```bash
+pipx install vinfer[full]
 ```
 
-### 2. Ollama Installation
-#### 2.1 x86/AMD64
+### 3. Ollama Installation
+
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-#### 2.2 Jetson (ARM64)
-Ollama official ARM64 build for Jetson:
-```bash
-# Download Jetson-specific Ollama binary
-curl -L https://github.com/ollama/ollama/releases/latest/download/ollama-linux-arm64.tar.gz -o ollama.tar.gz
-
-# Extract and install
-sudo tar -C /usr/local/bin -xzf ollama.tar.gz
-
-# Create systemd service (auto-start on boot)
-sudo tee /etc/systemd/system/ollama.service > /dev/null <<EOF
-[Unit]
-Description=Ollama Service
-After=network.target
-
-[Service]
-ExecStart=/usr/local/bin/ollama serve
-User=$USER
-Group=$USER
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Reload systemd and start Ollama
-sudo systemctl daemon-reload
-sudo systemctl enable ollama
-sudo systemctl start ollama
-```
-
-### 3. Jetson Resource Configuration (Critical)
-#### 3.1 Increase Swap Space (Prevent OOM)
+### 4. Jetson Resource Configuration (Optional)
+#### 4.1 Increase Swap Space
 ```bash
 # Create 4GB swap file
 sudo fallocate -l 4G /swapfile
@@ -85,7 +72,7 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
-#### 3.2 Configure GPU Memory (Jetson Orin/Nano)
+#### 4.2 Configure GPU Memory (Jetson Orin/Nano)
 ```bash
 # For Jetson Orin (set 16GB GPU memory)
 sudo nvpmodel -m 0
@@ -96,7 +83,7 @@ sudo nvpmodel -m 0
 sudo jetson_clocks
 ```
 
-#### 3.3 Pull Optimized Model (Jetson)
+#### 4.3 Pull Optimized Model (Jetson)
 ```bash
 # Recommended lightweight model for Jetson
 ollama pull qwen3.5:2b
