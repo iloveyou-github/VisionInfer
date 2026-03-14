@@ -1,0 +1,34 @@
+[project]
+name = "vinfer"  
+version = "0.1.0"
+authors = [
+  { name="Jian", email="7427169@qq.com" }
+]
+description = "Lightweight VLM Inference Tool for Jetson/ARM (supports RTSP/USB/VOD)"
+long_description = file: "README.md"
+long_description_content_type = "text/markdown"
+url = "https://github.com/iloveyou-github/vinfer"  # 建议关联GitHub仓库（可选）
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Linux",
+  "Operating System :: Linux :: ARM",  # 适配Jetson
+  "Topic :: Computer Vision",
+  "Topic :: AI :: Computer Vision"
+]
+requires-python = ">=3.8"
+dependencies = [
+  "numpy>=1.24.0",
+  "psutil>=5.9.0",
+  "ollama>=0.1.0"
+]
+
+[project.scripts]
+vinfer = "vinfer.main:main"  # 确保入口正确
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
