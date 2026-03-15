@@ -317,11 +317,11 @@ def main():
                         
                         result, infer_cost = infer_frame(args, raw_image_data)
                         
-                        print(f"{result}")
+                        print(f"\n🎯 Continuous inference result: {result}")
                         if args.debug:
                             print(f"⏱️  Encoding time: {frame_info['img_cost']:.2f}s | Inference time: {infer_cost:.2f}s")
                             print(f"🖼️  Frame info: Resolution {frame_info['frame_shape']} | Size {frame_info['img_size_kb']}KB | JPG quality {frame_info['jpg_quality']}")
-                            print(f"⌛ Waiting {args.interval} seconds before next inference...")
+                            print(f"⌛  Waiting {args.interval} seconds before next inference...")
 
                         wait_start = time.time()
                         while (time.time() - wait_start) < args.interval and not EXIT_FLAG and continuous_running:
