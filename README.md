@@ -10,7 +10,10 @@ Lightweight Visual Language Model (VLM) Inference Tool optimized for **Jetson Ed
 - 🎛️ Configurable parameters: Compression quality, inference interval, motion threshold
 - 🪵 Debug mode for troubleshooting (--debug flag)
 
+
+
 ## Requirements
+
 ### General Requirements
 - Python 3.8+
 - OpenCV (cv2)
@@ -23,32 +26,46 @@ Lightweight Visual Language Model (VLM) Inference Tool optimized for **Jetson Ed
 - Jetson Nano/Xavier NX/Orin (JetPack 5.0+)
 - Minimum 8GB RAM 
 
+
+
 ## Installation
-### 1. Base Dependencies (All Platforms)
-```bash
-# Install system dependencies
-sudo apt update && sudo apt install -y ffmpeg python3-pip pipx
-```
-### 2. Install VisionInfer
-#### 2.1 For Jetson (Pre-installed System OpenCV)
+
+### Install Dependencies Script Usage
+Our `install_deps.sh` script supports flexible dependency installation with optional Ollama backend, and is compatible with both `sh` (dash) and `bash` on Ubuntu/Jetson systems.
+
+#### Basic Usage
+| Scenario                          | Command                                                                 |
+|-----------------------------------|--------------------------------------------------------------------------|
+| Install only core dependencies (ffmpeg, python3-pip, pipx) | `curl -fsSL https://raw.githubusercontent.com/iloveyou-github/VisionInfer/main/install_deps.sh | sh` |
+| Install core dependencies + Ollama backend | `curl -fsSL https://raw.githubusercontent.com/iloveyou-github/VisionInfer/main/install_deps.sh | sh -s -- --backend ollama` |
+| Show script help (check parameters) | `curl -fsSL https://raw.githubusercontent.com/iloveyou-github/VisionInfer/main/install_deps.sh | sh -s -- --help` |
+
+#### Compatibility Note
+- For better compatibility (especially on Jetson), you can replace `sh` with `bash` (recommended):
+  ```bash
+  # Install core dependencies + Ollama (bash execution)
+  curl -fsSL https://raw.githubusercontent.com/iloveyou-github/VisionInfer/main/install_deps.sh | bash -s -- --backend ollama
+
+
+
+### Install VisionInfer
+
+#### For Jetson (Pre-installed System OpenCV)
 To avoid breaking system dependencies (e.g., JetPack's pre-built OpenCV), use --system-site-packages to reuse the system's OpenCV:
 ```bash
 pipx install --system-site-packages vinfer
 ```
-#### 2.2 For Other Systems (No Special OpenCV)
+#### For Other Systems (No Special OpenCV)
 Install with full dependencies (includes OpenCV) if your system doesn't have a pre-configured OpenCV:
 ```bash
 pipx install vinfer[full]
 ```
 
-### 3. Ollama Installation
 
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-```
 
-### 4. Jetson Resource Configuration (Optional)
-#### 4.1 Increase Swap Space
+### Jetson Resource Configuration (Optional)
+
+#### Increase Swap Space
 ```bash
 # Create 4GB swap file
 sudo fallocate -l 4G /swapfile
@@ -60,7 +77,7 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
-#### 4.2 Configure GPU Memory (Jetson Orin/Nano)
+#### Configure GPU Memory (Jetson Orin/Nano)
 ```bash
 # For Jetson Orin (set 16GB GPU memory)
 sudo nvpmodel -m 0
@@ -71,14 +88,17 @@ sudo nvpmodel -m 0
 sudo jetson_clocks
 ```
 
-#### 4.3 Pull Optimized Model (Jetson)
+#### Pull Optimized Model (Jetson)
 ```bash
 # Recommended lightweight model for Jetson
 ollama pull qwen3.5:2b
 ```
 
+
+
 ## Quick Start
-### 1. USB Camera Inference
+
+### USB Camera Inference
 ```bash
 # Basic USB camera (device ID 0) with debug logs
 vinfer cam --usb-dev 0 --debug
@@ -90,7 +110,7 @@ vinfer cam --usb-dev 0 --motion-gate --motion-threshold 500
 vinfer cam --usb-dev 0 --dedup --interval 2.0
 ```
 
-### 2. RTSP Camera Inference
+### RTSP Camera Inference
 ```bash
 # Basic RTSP stream (default credentials)
 vinfer cam --rtsp-host 192.168.1.10 --rtsp-user admin --rtsp-pass password --debug
@@ -99,7 +119,7 @@ vinfer cam --rtsp-host 192.168.1.10 --rtsp-user admin --rtsp-pass password --deb
 vinfer --rtsp-host 192.168.1.10 --compress-size 320x240 --jpg-quality 80
 ```
 
-### 3. VOD (Video File) Analysis
+### VOD (Video File) Analysis
 ```bash
 # Local video file (analyze every 30 frames)
 vinfer analyze --type vod --file /path/to/video.mp4 --start 0 --step 30
@@ -108,13 +128,16 @@ vinfer analyze --type vod --file /path/to/video.mp4 --start 0 --step 30
 vinfer analyze --type vod --url https://example.com/video.mp4 --debug
 ```
 
-### 4. Live Stream Analysis
+### Live Stream Analysis
 ```bash
 # HLS live stream (e.g., .m3u8)
 vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 ```
 
+
+
 ## Command Reference
+
 ### Core Subcommands
 | Subcommand | Description |
 |------------|-------------|
@@ -153,14 +176,14 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 
 ## Troubleshooting
 ### Common Issues & Solutions
-#### 1. EOF Error During Frame Extraction
+#### EOF Error During Frame Extraction
 - **Symptom**: `EOFError`/`IOError` when reading frames from RTSP/live streams
 - **Solutions**:
   - Increase RTSP timeout: Add `-stimeout 20000000` to FFmpeg command (code already includes this)
   - Check network stability (RTSP streams require low latency)
   - Use TCP for RTSP: `--rtsp-transport tcp` (enabled by default in code)
 
-#### 2. Zombie Processes (FFmpeg/Ollama)
+#### Zombie Processes (FFmpeg/Ollama)
 - **Symptom**: Orphaned FFmpeg/Ollama processes consuming resources
 - **Solutions**:
   - The code includes `kill_all_ffmpeg()` and `stop_ollama_serve()` for cleanup
@@ -173,7 +196,7 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
     sudo systemctl restart ollama
     ```
 
-#### 3. Resource Exhaustion (Jetson)
+#### Resource Exhaustion (Jetson)
 - **Symptom**: `Out of memory` errors or slow inference
 - **Solutions**:
   - Use smaller models (qwen3.5:2b instead of 7b)
@@ -181,21 +204,26 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
   - Reduce frame resolution (`--compress-size 320x240`)
   - Increase inference interval (`--interval 2.0` or higher)
 
-#### 4. Frame Extraction Failure
+#### Frame Extraction Failure
 - **Symptom**: `Frame extraction failed, unable to perform inference`
 - **Solutions**:
   - Verify RTSP URL/USB device accessibility
   - Check FFmpeg installation (`ffmpeg -version`)
   - For RTSP: Ensure camera is online and credentials are correct
 
-#### 5. Continuous Inference Errors
+#### Continuous Inference Errors
 - **Symptom**: `Continuous inference exception: [error message]`
 - **Solutions**:
   - Enable debug mode (`--debug`) to see detailed error logs
   - Check Ollama service status (`sudo systemctl status ollama`)
   - Verify model is pulled (`ollama list` to check installed models)
 
+
+
+
+
 ## Known Limitations
+
 ### Jetson-Specific Limitations
 - **Model Size**: Avoid 7B+ models (e.g., qwen3.5:7b) on Jetson Nano/Xavier NX—use `qwen3.5:2b` for stable performance
 - **Inference Speed**: 2B models run at ~1-2 FPS on Jetson Orin, ~0.5 FPS on Jetson Nano
