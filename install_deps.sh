@@ -18,11 +18,11 @@ print_help() {
     echo "  Install core dependencies + Ollama:  $0 --backend ollama"
 }
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
+# Parse command line arguments (POSIX compatible)
+while [ $# -gt 0 ]; do
     case "$1" in
         --backend)
-            if [[ "$2" == "ollama" ]]; then
+            if [ "$2" = "ollama" ]; then
                 INSTALL_OLLAMA=true
                 shift 2  # Skip --backend and ollama
             else
@@ -53,8 +53,8 @@ echo "============================================="
 echo "Step 1: Update apt package index and install core system dependencies..."
 sudo apt update && sudo apt install -y ffmpeg python3-pip pipx
 
-# Install Ollama only if the flag is enabled
-if [[ "$INSTALL_OLLAMA" == true ]]; then
+# Install Ollama only if the flag is enabled (POSIX compatible)
+if [ "$INSTALL_OLLAMA" = true ]; then
     echo "Step 2: Install Ollama backend..."
     curl -fsSL https://ollama.com/install.sh | sh
 else
@@ -65,7 +65,7 @@ fi
 echo "============================================="
 echo "✅ Installation completed!"
 echo "Core dependencies verified: Run 'pipx --version' (pipx) / 'ffmpeg -version' (ffmpeg)"
-if [[ "$INSTALL_OLLAMA" == true ]]; then
+if [ "$INSTALL_OLLAMA" = true ]; then
     echo "Ollama verified: Run 'ollama --version'"
 fi
 echo "============================================="
