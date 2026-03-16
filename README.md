@@ -155,6 +155,9 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 | `--dedup` | `-D` | Enable frame deduplication (disabled if motion-gate is on) | `False` |
 | `--interval` | `-i` | Inference interval (seconds/frame) | `1.0` |
 | `--debug` | `-d` | Enable verbose debug logging | `False` |
+| `--Prompt` | `-r` | User-defined prompts |
+| `--accelerate` | `-a` | Accelerate reasoning speed | `False` |
+| `--version` | `-v` | Show vinfer version |
 
 ### Cam Subcommand Arguments
 | Argument | Short | Description |

@@ -6,11 +6,12 @@ import signal
 import atexit
 import argparse
 import queue
+import vinfer
 
 from .constants import (
     EXIT_FLAG, input_thread, preview_stop_event, preview_thread_handle,
     FRAME_INTERVAL, DEDUP_THRESHOLD, MOTION_THRESHOLD, input_queue,
-    FRAME_QUEUE, FRAME_INFO_QUEUE
+    FRAME_QUEUE, FRAME_INFO_QUEUE, DEFAULT_PROMPT
 )
 from .cli import add_common_arguments
 from .backend.ollama_manager import start_ollama_serve, stop_ollama_serve
@@ -41,6 +42,14 @@ def main():
         prog="vinfer",
         description="VisionInfer - Lightweight VLM Inference Tool (supports camera/VOD/live stream)",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    # Version
+    parser.add_argument(
+        "--version", "-v",
+        action="version",
+        version=f"vinfer {vinfer.__version__}", 
+        help="Show vinfer version and exit"
     )
     
     # Subcommand parser

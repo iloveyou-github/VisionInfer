@@ -1,4 +1,5 @@
 import argparse
+from .constants import DEFAULT_PROMPT
 
 def add_common_arguments(parser):
     """Add common arguments for all subcommands"""
@@ -55,3 +56,17 @@ def add_common_arguments(parser):
         action="store_true",
         help="Enable debug logging (verbose output)"
     )
+    # Prompt
+    parser.add_argument(
+        "--prompt", "-r",
+        type=str,
+        default=DEFAULT_PROMPT,
+        help="User-defined prompts"
+    )
+    # Accelerate
+    parser.add_argument(
+        "--accelerate", "-a",
+        action="store_true",
+        help="Accelerate reasoning speed"
+    )
+
