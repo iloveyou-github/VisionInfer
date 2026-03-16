@@ -1,13 +1,43 @@
 import cv2
+import re
 import numpy as np
 import os
 import signal
 import subprocess
+import logging
+from logging.handlers import RotatingFileHandler
 from .constants import FFMPEG_PIDS
 from .resolution_cache import get_rtsp_resolution
 
+def setup_logger():
+    log_dir = os.path.expanduser("~/.vinfer")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "vinfer.log")
+    
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=10*1024*1024,  
+        backupCount=5,         
+        encoding="utf-8"
+    )
+    
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    file_handler.setFormatter(logging.Formatter(log_format))
+    
+    handlers = [logging.StreamHandler(), file_handler]
+    logging.basicConfig(level=logging.WARNING, handlers=handlers)
+
+setup_logger()
+logger = logging.getLogger("vinfer")
+
 def get_usb_frame(dev_id):
-    cap = cv2.VideoCapture(dev_id)
+    try:
+        cap = cv2.VideoCapture(dev_id, cv2.CAP_V4L2)
+        backend = cap.getBackendName()
+        logger.info(f"USB camera using backend: {backend} (Target: V4L2)")
+    except Exception as e:
+        logger.warning(f"V4L2 backend is unavailable, falling back to the default backend:{e}")
+        cap = cv2.VideoCapture(dev_id)
     ret, frame = cap.read()
     cap.release()
     return frame if ret else None
@@ -121,3 +151,33 @@ def init_shared_camera(dev_id):
     ret = cap.isOpened()
     cap.release()
     return ret
+
+def detect_language(text: str) -> str:
+
+    clean_text = re.sub(r'[^\w\s]', '', text).strip()
+    if not clean_text:
+        return "unknown"
+    
+    chinese_chars = re.findall(r'[\u4e00-\u9fff]', clean_text)
+    chinese_count = len(chinese_chars)
+    
+    english_chars = re.findall(r'[a-zA-Z]', clean_text)
+    english_count = len(english_chars)
+    
+    total = chinese_count + english_count
+    if total == 0:
+        return "unknown"
+    
+    chinese_ratio = chinese_count / total
+    english_ratio = english_count / total
+    
+    if chinese_ratio > english_ratio:
+        return "zh"
+    elif english_ratio > chinese_ratio:
+        return "en"
+    else:
+        first_char = next((c for c in clean_text if c.strip()), '')
+        if re.match(r'[\u4e00-\u9fff]', first_char):
+            return "zh"
+        else:
+            return "en"
