@@ -56,12 +56,14 @@ def stop_ollama_serve():
                     print(f"✅ Terminated Ollama process (PID: {proc.info['pid']})")
     except Exception as e:
         print(f"⚠️ Exception terminating Ollama: {e}")
-'''
+
 
 def stop_ollama_serve():
+    """停止Ollama服务（仅清理当前用户的进程，跳过系统级进程）"""
     global ollama_process
-    current_uid = os.getuid() 
+    current_uid = os.getuid()  # 获取当前用户的UID（关键！）
     
+    # 1. 停止程序自身启动的ollama进程（原有逻辑保留）
     if ollama_process and ollama_process.poll() is None:
         try:
             ollama_process.terminate()
@@ -72,15 +74,18 @@ def stop_ollama_serve():
         finally:
             ollama_process = None
     
+    # 2. 清理残留进程：仅清理当前用户启动的Ollama进程（核心优化）
     for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'uids']):
         try:
+            # 跳过无权限访问的进程（如root进程）
             proc_uids = proc.info['uids']
             if not proc_uids:
                 continue
-
+            # 仅处理当前用户启动的进程（匹配real UID）
             if proc_uids.real != current_uid:
                 continue
             
+            # 匹配Ollama进程（排除grep/无关进程）
             is_ollama = False
             if proc.info['name'] and 'ollama' in proc.info['name'].lower():
                 is_ollama = True
@@ -89,17 +94,46 @@ def stop_ollama_serve():
             
             if is_ollama:
                 pid = proc.info['pid']
-                if pid == os.getpid() or pid == 1: 
+                if pid == os.getpid() or pid == 1:  # 跳过自身/init进程
                     continue
+                # 终止当前用户的Ollama进程
                 proc.terminate()
                 proc.wait(timeout=5)
                 logger.info(f"Cleaned residual Ollama process (PID: {pid}, user-owned)")
         except psutil.NoSuchProcess:
-            continue 
+            continue  # 进程已退出，忽略
         except psutil.AccessDenied:
+            # 明确跳过无权限的系统级进程，不记录警告（关键！）
             continue
         except Exception as e:
             logger.warning(f"Failed to clean user-owned Ollama process: {e}")
+'''
+
+def stop_ollama_serve():
+    
+    try:
+        os.system("sudo pkill -f ollama")
+    except:
+        pass
+
+    try:
+        for proc in psutil.process_iter(attrs=['pid']):
+            try:
+                pid = proc.info['pid']
+
+                try:
+                    cmdline = open(f"/proc/{pid}/cmdline", "rb").read().decode("latin1")
+                    if "ollama" in cmdline:
+                        if pid == os.getpid():
+                            continue
+                        os.kill(pid, signal.SIGKILL)
+                except:
+                    continue
+            except:
+                continue
+    except:
+        pass
+
 
 def get_ollama_usage_data():
     return {"status": "Not implemented", "models": []}
