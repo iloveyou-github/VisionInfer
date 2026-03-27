@@ -19,11 +19,12 @@ Lightweight Visual Language Model (VLM) Inference Tool optimized for **Jetson Ed
 - OpenCV (cv2)
 - NumPy
 - psutil
-- Ollama (v0.1.40+)
+- Ollama (v0.1.40+) [Optional]
+- YOLO [Optional]
 - FFmpeg (for frame extraction from streams/files)
 
 ### Jetson-Specific Requirements
-- Jetson Nano/Xavier NX/Orin (JetPack 5.0+)
+- Jetson Nano/Xavier NX/Orin (JetPack 6.0+)
 - Minimum 8GB RAM 
 
 
@@ -36,9 +37,9 @@ Our `install_deps.sh` script supports flexible dependency installation with opti
 #### Basic Usage
 | Scenario                          | Command                                                                 |
 |-----------------------------------|--------------------------------------------------------------------------|
-| Install only core dependencies (ffmpeg, python3-pip, pipx) | `curl -fsSL https://raw.githubusercontent.com/iloveyou-github/VisionInfer/main/install_deps.sh \| sh` |
-| Install core dependencies + Ollama backend | `curl -fsSL https://raw.githubusercontent.com/iloveyou-github/VisionInfer/main/install_deps.sh \| sh -s -- --backend ollama` |
-| Show script help (check parameters) | `curl -fsSL https://raw.githubusercontent.com/iloveyou-github/VisionInfer/main/install_deps.sh \| sh -s -- --help` |
+| Install only core dependencies (ffmpeg, python3-pip, pipx) | `curl -fsSL https://raw.githubusercontent.com/machinefi/VisionInfer/refs/heads/main/install_deps.sh \| sh` |
+| Install core dependencies + Ollama backend | `curl -fsSL https://raw.githubusercontent.com/machinefi/VisionInfer/refs/heads/main/install_deps.sh \| sh -s -- --backend ollama` |
+| Show script help (check parameters) | `curl -fsSL https://raw.githubusercontent.com/machinefi/VisionInfer/refs/heads/main/install_deps.sh \| sh -s -- --help` |
 
 #### Compatibility Note
 - For better compatibility (especially on Jetson), you can replace `sh` with `bash` (recommended):
@@ -50,12 +51,26 @@ Our `install_deps.sh` script supports flexible dependency installation with opti
 
 ### Install VisionInfer
 
-#### For Jetson (Pre-installed System OpenCV)
+#### For Jetson (Pre-installed System OpenCV with CUDA)
 To avoid breaking system dependencies (e.g., JetPack's pre-built OpenCV), use --system-site-packages to reuse the system's OpenCV:
+
+- If you **do not** plan to use YOLO models in the future, we recommend installing using the following command.
+
 ```bash
 pipx install --system-site-packages vinfer
 ```
+- If you plan to use YOLO models in the future, we strongly recommend installing them with the following command.
+
+```
+pip install --system-site-packages vinfer
+pip install ultralytics --no-deps
+pip install matplotlib pillow polars psutil pyyaml requests scipy ultralytics-thop
+```
+
+
+
 #### For Other Systems (No Special OpenCV)
+
 Install with full dependencies (includes OpenCV) if your system doesn't have a pre-configured OpenCV:
 ```bash
 pipx install vinfer[full]
@@ -108,6 +123,12 @@ vinfer cam --usb-dev 0 --motion-gate --motion-threshold 500
 
 # USB camera with frame deduplication (skip similar frames)
 vinfer cam --usb-dev 0 --dedup --interval 2.0
+
+# Basic USB camera (device ID 0) with YOLO
+vinfer cam --usb-dev 0 --model "yolo"
+
+# Basic USB camera (device ID 0) with YOLO26 in Detection task 
+vinfer cam --usb-dev 0 --model "yolo" --yolo-version 26 --yolo-task "detection"
 ```
 
 ### RTSP Camera Inference
@@ -117,6 +138,12 @@ vinfer cam --rtsp-host 192.168.1.10 --rtsp-user admin --rtsp-pass password --deb
 
 # RTSP with custom compression (320x240) and JPG quality (80)
 vinfer --rtsp-host 192.168.1.10 --compress-size 320x240 --jpg-quality 80
+
+# Simple RTSP stream (default credentials) with YOLO
+vinfer -H 192.168.1.10 -m "yolo" 
+
+# Simple RTSP stream (default credentials) with YOLO11 in Pose task
+vinfer -H 192.168.1.10 -m "yolo" -yv 11 -yt "pose"
 ```
 
 ### VOD (Video File) Analysis
@@ -147,7 +174,7 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 ### Common Arguments
 | Argument | Short | Description | Default |
 |----------|-------|-------------|---------|
-| `--model` | `-m`  | Ollama model name | `qwen3.5:2b` |
+| `--model` | `-m`  | Ollama model name or YOLO | `qwen3.5:2b` |
 | `--compress-size` | `-s` | Frame compression resolution (WxH) | `480x360` |
 | `--jpg-quality` | `-q` | JPG compression quality (0-100) | `70` |
 | `--motion-gate` | `-g` | Enable motion detection (infer only on motion) | `False` |
@@ -155,9 +182,11 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 | `--dedup` | `-D` | Enable frame deduplication (disabled if motion-gate is on) | `False` |
 | `--interval` | `-i` | Inference interval (seconds/frame) | `1.0` |
 | `--debug` | `-d` | Enable verbose debug logging | `False` |
-| `--Prompt` | `-r` | User-defined prompts |
+| `--Prompt` | `-r` | User-defined prompts ||
 | `--accelerate` | `-a` | Accelerate reasoning speed | `False` |
-| `--version` | `-v` | Show vinfer version |
+| `--version` | `-v` | Show vinfer version ||
+| --yolo-version | `-yv` | Use YOLO version [8, 11, 26] |8|
+| --yolo-task | `-yt` | Use YOLO task ['detection', 'segment', 'classify', 'pose', 'obb'] |detection|
 
 ### Cam Subcommand Arguments
 | Argument | Short | Description |
@@ -179,6 +208,33 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 
 ## Troubleshooting
 ### Common Issues & Solutions
+
+#### Cannot uninstall sympy
+
+- **Symptom**: Cannot uninstall Sympy 1.9
+
+- **Solution**:
+
+  ```
+  sudo apt remove python3-sympy -y
+  ```
+
+  
+
+#### numpy version conflict
+
+- **Symptom**：numpy version conflict
+
+- **Solution**: 
+
+  - Install the specified version
+
+    ```
+    sudo pip3 install numpy==1.23.5
+    ```
+
+
+
 #### EOF Error During Frame Extraction
 - **Symptom**: `EOFError`/`IOError` when reading frames from RTSP/live streams
 - **Solutions**:
@@ -241,6 +297,7 @@ vinfer analyze --type live --url https://example.com/stream.m3u8 --interval 1.0
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
+- [YOLO]([Ultralytics | Revolutionizing the World of Computer Vision](https://www.ultralytics.com/)) for end-to-end computer vision platform
 - [Ollama](https://ollama.com/) for lightweight LLM inference
 - [OpenCV](https://opencv.org/) for computer vision processing
 - [NVIDIA Jetson](https://developer.nvidia.com/jetson) for edge AI platform support
