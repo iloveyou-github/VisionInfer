@@ -33,3 +33,7 @@ vod_current_offset = 0
 vod_step = 30
 vod_start_offset = 0
 FFMPEG_PIDS = []
+
+# Yolo relate
+YOLO_MODEL = ''
+YOLO_TASK  = ''

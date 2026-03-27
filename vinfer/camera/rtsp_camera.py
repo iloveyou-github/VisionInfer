@@ -5,19 +5,21 @@ import queue
 import time
 import signal
 from ..utils import logger
+from ..constants import YOLO_MODEL, YOLO_TASK
+from ..backend.yolo_manager import yolo_infer_frame_yolo
 
 class RTSPCamera:
     """Singleton class for RTSP camera operations (one handle per device)"""
     _instance = None
     _lock = threading.Lock()  # Thread lock for singleton safety
 
-    def __new__(cls, url, dev_id=0, width=1280, height=720, fps=30):
+    def __new__(cls, url, dev_id=0, model_ventor="qwen", width=1280, height=720, fps=30):
         """Create singleton instance (only one per device ID)"""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
-                    cls._instance._init_camera(url, dev_id, width, height, fps)
+                    cls._instance._init_camera(url, dev_id, model_ventor, width, height, fps)
                     cls._instance.ref_count = 0
                     cls._instance._preview_window_name = f"RTPS_Preview_{dev_id}"
                     cls._instance._preview_thread = None
@@ -27,7 +29,7 @@ class RTSPCamera:
         logger.info(f"RTSP camera ref count increased: {cls._instance.ref_count} (dev: {cls._instance.dev_id})")
         return cls._instance
 
-    def _init_camera(self, url, dev_id, width, height, fps):
+    def _init_camera(self, url, dev_id, model_ventor, width, height, fps):
         """Initialize RTSP camera with V4L2 backend (avoid GStreamer conflicts)"""
         self.dev_id = dev_id
         self.frame_queue = queue.Queue(maxsize=2)  # Shared queue for preview/inference
@@ -35,16 +37,21 @@ class RTSPCamera:
         self.cap = None                           # Camera capture handle
         self.read_thread = None                   # Frame reading thread
         self.url = url
+        self.model_ventor = model_ventor
 
         self.cap = cv2.VideoCapture(self.url)
         if not self.cap.isOpened():
             logger.error(f"RTSP camera initialization failed: {url}")
             raise RuntimeError(f"Failed to open rtsp camera: {url}")
 
+        self.frame_height = height
+        self.frame_width  = width
+        self.fps = fps
+
         # Configure camera parameters (only once at initialization)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_FPS, fps)
+        # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        # self.cap.set(cv2.CAP_PROP_FPS, fps)
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Minimize buffer to reduce conflicts
         logger.info(f"RTSP camera initialized successfully: {url} (resolution: {width}x{height}, FPS: {fps})")
 
@@ -81,37 +88,50 @@ class RTSPCamera:
             return None
 
     def _preview_worker(self, preview_size):
-        cv2.namedWindow(self._preview_window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(self._preview_window_name, preview_size[0], preview_size[1])
-        logger.info(f"RTSP preview window created: {self._preview_window_name} (thread: {threading.current_thread().name})")
+        # cv2.namedWindow(self._preview_window_name, cv2.WINDOW_NORMAL)
+        
+        # if self.model_ventor == 'yolo':
+        #     cv2.resizeWindow(self._preview_window_name, self.frame_width, self.frame_height)
+        # else:
+        #     cv2.resizeWindow(self._preview_window_name, preview_size[0], preview_size[1])
+
+        # logger.info(f"RTSP preview window created: {self._preview_window_name} (thread: {threading.current_thread().name})")
 	        
         self._preview_running = True
         # while self._preview_running and not self.exit_flag.is_set():
         while self._preview_running:
-            frame = self.get_frame()
-            if frame is None:
+            frame_raw = self.get_frame()
+            if frame_raw is None:
                 time.sleep(0.01)
                 continue
-            
-            preview_frame = cv2.resize(frame, preview_size)
+
+            if self.model_ventor == 'yolo':
+                preview_frame = yolo_infer_frame_yolo(frame_raw)
+            else:
+                preview_frame = cv2.resize(frame_raw, preview_size)
+
             cv2.imshow(self._preview_window_name, preview_frame)
-            
+                        
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q') or key == 27:  # Q/ESC
                logger.info(f"RTSP preview stopped by user (Q/ESC): {self._preview_window_name}")
                break
 
-            if cv2.getWindowProperty(self._preview_window_name, cv2.WND_PROP_VISIBLE) < 1:
-               logger.info(f"RTSP preview window closed by user (X): {self._preview_window_name}")
-               break
+            # if cv2.getWindowProperty(self._preview_window_name, cv2.WND_PROP_VISIBLE) < 1:
+            #    logger.info(f"RTSP preview window closed by user (X): {self._preview_window_name}")
+            #    break
         
         self._preview_running = False
         try:
             cv2.destroyWindow(self._preview_window_name)
-            time.sleep(0.05)  
+            cv2.waitKey(1)
+            time.sleep(0.1)  
             logger.info(f"RTSP preview window destroyed: {self._preview_window_name} (thread: {threading.current_thread().name})")
         except Exception as e:
             logger.warning(f"Failed to destroy preview window: {e}")
+        finally:
+            cv2.waitKey(1)
+            cv2.destroyAllWindows()  
 
     def start_preview(self, preview_size=(480, 360)):
         if self._preview_thread is None or not self._preview_thread.is_alive():
@@ -168,13 +188,13 @@ class RTSPCamera:
         self.release_ref()
 
 # Public interface for simplified usage
-def init_rtsp_camera(url, dev_id=0, width=1280, height=720, fps=30):
+def init_rtsp_camera(url, dev_id=0, model_ventor="qwen", width=1280, height=720, fps=30):
     """Initialize RTSP camera singleton and start frame reading thread"""
     if url == None:
         logger.error(f"The rtsp dev_{dev_id} URL musn't be None")
         return None
     try:
-        camera = RTSPCamera(url, dev_id, width, height, fps)
+        camera = RTSPCamera(url, dev_id, model_ventor, width, height, fps)
         camera.start_read()
         return camera
     except RuntimeError as e:
@@ -182,7 +202,7 @@ def init_rtsp_camera(url, dev_id=0, width=1280, height=720, fps=30):
         return None
 
 # Public interface for preview
-def start_rtsp_preview(url, dev_id=0, preview_size=(480, 360)):
+def start_rtsp_preview(url, dev_id=0, model_ventor="qwen", preview_size=(480, 360)):
     """
     Start RTSP camera preview thread (consumes shared frames from singleton instance)
     :param dev_id: RTSP camera device ID (default: 0)
@@ -196,7 +216,7 @@ def start_rtsp_preview(url, dev_id=0, preview_size=(480, 360)):
 
     try:
         # Get singleton camera instance (initialize if not exists)
-        camera = RTSPCamera(url, dev_id)
+        camera = RTSPCamera(url, dev_id, model_ventor)
         # Ensure frame reading thread is running (critical for preview)
         camera.start_read()
         logger.info(f"RTSP camera preview thread started (device ID: {dev_id}, preview size: {preview_size})")

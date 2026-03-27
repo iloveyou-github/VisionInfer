@@ -12,10 +12,11 @@ import vinfer
 from .constants import (
     EXIT_FLAG, input_thread, preview_stop_event, preview_thread_handle,
     FRAME_INTERVAL, DEDUP_THRESHOLD, MOTION_THRESHOLD, input_queue,
-    FRAME_QUEUE, FRAME_INFO_QUEUE, DEFAULT_PROMPT
+    FRAME_QUEUE, FRAME_INFO_QUEUE, DEFAULT_PROMPT, 
 )
-from .cli import add_common_arguments
+from .cli import add_common_arguments, get_inference_model_name
 from .backend.ollama_manager import start_ollama_serve, stop_ollama_serve
+from .backend.yolo_manager import yolo_load_model, yolo_infer_frame_yolo
 from .frame_producer import start_frame_producer, stop_frame_producer
 from .input_listener import input_listener, preview_thread
 from .utils import logger, check_usb_camera, init_shared_camera, extract_frame_stable, kill_all_ffmpeg
@@ -214,22 +215,37 @@ def main():
             print("⚠️ USB camera initialization failed, please check camera status")        
             return
 
-    # Start Ollama service
     print("="*60)
     print("🚀 Starting VisionInfer Tool (optimized version)")
     print("="*60)
-    if not start_ollama_serve():
-        print("❌ Program exited")
-        return
+
+    yolo_enable, model_filename = get_inference_model_name(args, "yolo")
+    if yolo_enable:
+        try:
+            yolo_load_model(model_filename) 
+        except Exception as e:
+            print(f'❌ Program exited: {e}')
+            return
+    else:
+        # Start Ollama service
+        if not start_ollama_serve():
+            print("❌ Program exited")
+            return
 
     # Initialize preview
-    preview_width, preview_height = 480, 360
-    if args.show_preview:
+    preview_width, preview_height = map(int, args.compress_size.split('x'))
+    if args.show_preview or yolo_enable:
         if args.source_type == "usb":
-            preview_thread_handle = start_usb_preview(args.usb_dev, preview_size=(480, 360))
+            if yolo_enable:
+                preview_thread_handle = start_usb_preview(args.usb_dev, "yolo", preview_size=(preview_width, preview_height))
+            else:
+                preview_thread_handle = start_usb_preview(args.usb_dev, preview_size=(480, 360))
             logger.info(f"✅ USB Preview started(ID:{args.usb_dev})")
         elif args.source_type == "rtsp":
-            preview_thread_handle = start_rtsp_preview(args.source_url, 0, preview_size=(480, 360))
+            if yolo_enable:
+                preview_thread_handle = start_rtsp_preview(args.source_url, 0, "yolo", preview_size=(480, 360))
+            else:
+                preview_thread_handle = start_rtsp_preview(args.source_url, 0, preview_size=(480, 360))
             logger.info(f"✅ RTSP preview started (URL: {args.source_url[:30]}...)")
 
     # Start input listener
@@ -317,13 +333,15 @@ def main():
                             time.sleep(0.1)
                             continue
                         
-                        result, infer_cost = infer_frame(args, raw_image_data)
-                        
-                        print(f"\n🎯 Continuous inference result: {result}")
-                        if args.debug:
-                            print(f"⏱️  Encoding time: {frame_info['img_cost']:.2f}s | Inference time: {infer_cost:.2f}s")
-                            print(f"🖼️  Frame info: Resolution {frame_info['frame_shape']} | Size {frame_info['img_size_kb']}KB | JPG quality {frame_info['jpg_quality']}")
-                            print(f"⌛  Waiting {args.interval} seconds before next inference...")
+                        if not yolo_enable:
+
+                            result, infer_cost = infer_frame(args, raw_image_data)
+                            
+                            print(f"\n🎯 Continuous inference result: {result}")
+                            if args.debug:
+                                print(f"⏱️  Encoding time: {frame_info['img_cost']:.2f}s | Inference time: {infer_cost:.2f}s")
+                                print(f"🖼️  Frame info: Resolution {frame_info['frame_shape']} | Size {frame_info['img_size_kb']}KB | JPG quality {frame_info['jpg_quality']}")
+                                print(f"⌛  Waiting {args.interval} seconds before next inference...")
 
                         wait_start = time.time()
                         while (time.time() - wait_start) < args.interval and not EXIT_FLAG and continuous_running:
@@ -353,6 +371,7 @@ def main():
         if preview_thread_handle and preview_thread_handle.is_alive():
             preview_stop_event.set()
             preview_thread_handle.join(timeout=2)
+
         stop_ollama_serve()
         kill_all_ffmpeg()
 
@@ -370,7 +389,7 @@ def main():
                 print(f"⚠️ Failed to force release RTSP camera: {e}")
         else:
             cv2.destroyAllWindows()
-            
+        os._exit(0)            
         print("✅ Program exited cleanly")
 
 if __name__ == "__main__":
